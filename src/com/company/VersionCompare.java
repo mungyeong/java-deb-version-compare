@@ -74,17 +74,8 @@ public class VersionCompare {
 			}
 		}
 		if (baseMax < targetMax) {
-			String object = (String)target.get(i);
-			if (object.toCharArray()[0] == '~') {
-				return 1;
-			}
 			return -1;
-		}
-		if (baseMax > targetMax) {
-			String object = (String)base.get(i);
-			if (object.toCharArray()[0] == '~') {
-				return -1;
-			}
+		} else if (baseMax > targetMax) {
 			return 1;
 		}
 		return 0;
@@ -114,14 +105,8 @@ public class VersionCompare {
 			}
 		}
 		if (baseMax < targetMax) {
-			if (targetArray[i] != '~') {
-				return 1;
-			}
 			return -1;
 		} else if (baseMax > targetMax) {
-			if (baseArray[i] != '~') {
-				return -1;
-			}
 			return 1;
 		}
 		return 0;
@@ -144,8 +129,16 @@ public class VersionCompare {
 	}
 
 	public static boolean isFixedVersion(String base, String target) {
+		if (target == null || target.isEmpty() || target.equals("0"))
+			return false;
 		VersionCompare baseVersion = new VersionCompare(base);
 		VersionCompare targetVersion = new VersionCompare(target);
 		return baseVersion.compare(targetVersion) >= 0;
+	}
+
+	public static int compareTo(String base, String target) {
+		VersionCompare baseVersion = new VersionCompare(base);
+		VersionCompare targetVersion = new VersionCompare(target);
+		return baseVersion.compare(targetVersion);
 	}
 }
