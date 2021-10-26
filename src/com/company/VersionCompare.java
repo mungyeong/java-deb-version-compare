@@ -13,9 +13,9 @@ public class VersionCompare {
 
 	private Integer epoch = 0;
 
-	private List<Object> upStream;
+	private final List<Object> upStream;
 
-	private List<Object> debian;
+	private final List<Object> debian;
 
 	private VersionCompare(String version) {
 		Deque<String> temp = new ArrayDeque<>(Arrays.asList(version.split("[\\:]")));
@@ -57,25 +57,31 @@ public class VersionCompare {
 		for (; i < Math.min(baseMax, targetMax); i++) {
 			Object baseObject = base.get(i);
 			Object targetObject = target.get(i);
-			if (baseObject instanceof String && targetObject instanceof String) {
+			if (isString(baseObject) && isString(targetObject)) {
 				int result = compareString((String)baseObject, (String)targetObject);
 				if (result != 0) {
 					return result;
 				}
-			} else if (baseObject instanceof Long && targetObject instanceof Long) {
+			} else if (isLong(baseObject) && isLong(targetObject)) {
 				int result = ((Long)baseObject).compareTo((Long)targetObject);
 				if (result != 0) {
 					return result;
 				}
-			} else if (baseObject instanceof Long) {
+			} else if (isLong(baseObject)) {
 				return 1;
-			} else if (targetObject instanceof Long) {
+			} else if (isLong(targetObject)) {
 				return -1;
 			}
 		}
 		if (baseMax < targetMax) {
+			if (isString(target.get(i)) && isTilde((String)target.get(i))) {
+				return 1;
+			}
 			return -1;
 		} else if (baseMax > targetMax) {
+			if (isString(base.get(i)) && isTilde((String)base.get(i))) {
+				return -1;
+			}
 			return 1;
 		}
 		return 0;
@@ -87,34 +93,35 @@ public class VersionCompare {
 		int baseMax = baseArray.length;
 		int targetMax = targetArray.length;
 		int i = 0;
+		int result = 0;
 
 		for (; i < Math.min(baseMax, targetMax); i++) {
-			int result = baseArray[i] - targetArray[i];
-			if (baseArray[i] == '-' || baseArray[i] == '+' || targetArray[i] == '-' || targetArray[i] == '+') {
+			result = baseArray[i] - targetArray[i];
+			if (isPlusAndMinus(baseArray[i]) && isPlusAndMinus(targetArray[i])) {
 				result = targetArray[i] - baseArray[i];
 			}
-
 			if (result != 0) {
-				if (targetArray[i] == '~') {
-					return 1;
+				if (isTilde(targetArray[i])) {
+					result = 1;
+					break;
+				} else if (isTilde(baseArray[i])) {
+					result = -1;
+					break;
 				}
-				if (baseArray[i] == '~') {
-					return -1;
-				}
-				return result > 0 ? 1 : -1;
+				return result > 0 ? 1:-1;
 			}
 		}
-		if (baseMax < targetMax) {
-			return -1;
-		} else if (baseMax > targetMax) {
-			return 1;
+		if (baseMax < targetMax && isTilde(targetArray[i])) {
+			result = 1;
+		} else if (baseMax > targetMax && isTilde(baseArray[i])) {
+			result = -1;
 		}
-		return 0;
+		return result;
 	}
 
 	private List<Object> getListObject(String s) {
 		List<Object> objects = new ArrayList<>();
-		Pattern p = Pattern.compile("([a-zA-Z])+|([0-9])+|([\\-~+])+");
+		Pattern p = Pattern.compile("[a-zA-Z]+|[0-9]+|[\\-~+]+");
 
 		Matcher m = p.matcher(s);
 		while (m.find()) {
@@ -124,16 +131,7 @@ public class VersionCompare {
 				objects.add(m.group());
 			}
 		}
-
 		return objects;
-	}
-
-	public static boolean isFixedVersion(String base, String target) {
-		if (target == null || target.isEmpty() || target.equals("0"))
-			return false;
-		VersionCompare baseVersion = new VersionCompare(base);
-		VersionCompare targetVersion = new VersionCompare(target);
-		return baseVersion.compare(targetVersion) >= 0;
 	}
 
 	public static int compareTo(String base, String target) {
@@ -141,4 +139,41 @@ public class VersionCompare {
 		VersionCompare targetVersion = new VersionCompare(target);
 		return baseVersion.compare(targetVersion);
 	}
+
+	public static boolean isFixedVersion(String status, String base, String target) {
+		if (target == null || target.isEmpty() || target.equals("0") || !status.equals("resolved"))
+			return false;
+		VersionCompare baseVersion = new VersionCompare(base);
+		VersionCompare targetVersion = new VersionCompare(target);
+		return baseVersion.compare(targetVersion) >= 0;
+	}
+
+	public static boolean isVulnerableVersion(String status, String base, String target) {
+		if (target == null || target.isEmpty() || target.equals("0") || !status.equals("resolved"))
+			return false;
+		VersionCompare baseVersion = new VersionCompare(base);
+		VersionCompare targetVersion = new VersionCompare(target);
+		return baseVersion.compare(targetVersion) < 0;
+	}
+
+	private boolean isPlusAndMinus(char text) {
+		return text == '-' || text == '+';
+	}
+
+	private boolean isTilde(char text) {
+		return text == '~';
+	}
+
+	private boolean isTilde(String text) {
+		return text.startsWith("~");
+	}
+
+	private boolean isString(Object object) {
+		return object instanceof String;
+	}
+
+	private boolean isLong(Object object) {
+		return object instanceof Long;
+	}
+
 }
