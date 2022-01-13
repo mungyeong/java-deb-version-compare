@@ -18,21 +18,21 @@ public class VersionCompare {
 	private final List<Object> debian;
 
 	private VersionCompare(String version) {
-		Deque<String> temp = new ArrayDeque<>(Arrays.asList(version.split("[\\:]")));
-		if (temp.size() > 1) {
-			this.epoch = Integer.parseInt(temp.poll());
+		Deque<String> deque = new ArrayDeque<>(Arrays.asList(version.split("[\\:]")));
+		if (deque.size() > 1) {
+			this.epoch = Integer.parseInt(deque.poll());
 		}
-		temp = new ArrayDeque<>(
+		deque = new ArrayDeque<>(
 			Arrays.asList(
-				Objects.requireNonNull(temp.poll())
+				Objects.requireNonNull(deque.poll())
 					.split("[\\-]")
 			));
-		if (temp.size() > 1) {
-			this.debian = getListObject(temp.pollLast());
+		if (deque.size() > 1) {
+			this.debian = getListObject(deque.pollLast());
 		} else {
 			this.debian = new ArrayList<>();
 		}
-		this.upStream = getListObject(String.join("-", temp));
+		this.upStream = getListObject(String.join("-", deque));
 
 	}
 
@@ -108,7 +108,7 @@ public class VersionCompare {
 					result = -1;
 					break;
 				}
-				return result > 0 ? 1:-1;
+				return result > 0 ? 1 : -1;
 			}
 		}
 		if (baseMax < targetMax && isTilde(targetArray[i])) {
@@ -135,25 +135,52 @@ public class VersionCompare {
 	}
 
 	public static int compareTo(String base, String target) {
+		if (base == null && target == null) {
+			return 0;
+		} else if (base == null) {
+			return -1;
+		} else if (target == null) {
+			return 1;
+		}
 		VersionCompare baseVersion = new VersionCompare(base);
 		VersionCompare targetVersion = new VersionCompare(target);
 		return baseVersion.compare(targetVersion);
 	}
 
+	public static boolean isFixedVersion(String base, String target) {
+		if (target != null && !target.isEmpty() && !target.equals("0")) {
+			VersionCompare baseVersion = new VersionCompare(base);
+			VersionCompare targetVersion = new VersionCompare(target);
+			return baseVersion.compare(targetVersion) >= 0;
+		}
+		return false;
+	}
+
+	public static boolean isVulnerableVersion(String base, String target) {
+		if (target != null && !target.isEmpty() && !target.equals("0")) {
+			VersionCompare baseVersion = new VersionCompare(base);
+			VersionCompare targetVersion = new VersionCompare(target);
+			return baseVersion.compare(targetVersion) < 0;
+		}
+		return false;
+	}
+
 	public static boolean isFixedVersion(String status, String base, String target) {
-		if (target == null || target.isEmpty() || target.equals("0") || !status.equals("resolved"))
-			return false;
-		VersionCompare baseVersion = new VersionCompare(base);
-		VersionCompare targetVersion = new VersionCompare(target);
-		return baseVersion.compare(targetVersion) >= 0;
+		if (target != null && !target.isEmpty() && !target.equals("0") && status.equals("resolved")) {
+			VersionCompare baseVersion = new VersionCompare(base);
+			VersionCompare targetVersion = new VersionCompare(target);
+			return baseVersion.compare(targetVersion) >= 0;
+		}
+		return false;
 	}
 
 	public static boolean isVulnerableVersion(String status, String base, String target) {
-		if (target == null || target.isEmpty() || target.equals("0") || !status.equals("resolved"))
-			return false;
-		VersionCompare baseVersion = new VersionCompare(base);
-		VersionCompare targetVersion = new VersionCompare(target);
-		return baseVersion.compare(targetVersion) < 0;
+		if (target != null && !target.isEmpty() && !target.equals("0") && status.equals("resolved")) {
+			VersionCompare baseVersion = new VersionCompare(base);
+			VersionCompare targetVersion = new VersionCompare(target);
+			return baseVersion.compare(targetVersion) < 0;
+		}
+		return false;
 	}
 
 	private boolean isPlusAndMinus(char text) {
